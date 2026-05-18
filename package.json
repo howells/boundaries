@@ -1,0 +1,41 @@
+{
+  "name": "@howells/boundaries",
+  "version": "0.1.2",
+  "description": "Opinionated Turborepo package boundary conventions.",
+  "type": "module",
+  "bin": {
+    "boundaries": "src/cli.js"
+  },
+  "license": "MIT",
+  "keywords": [
+    "turborepo",
+    "monorepo",
+    "boundaries",
+    "architecture",
+    "cli"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/howells/boundaries.git"
+  },
+  "bugs": {
+    "url": "https://github.com/howells/boundaries/issues"
+  },
+  "homepage": "https://www.npmjs.com/package/@howells/boundaries",
+  "files": [
+    "AGENTS.md",
+    "README.md",
+    "scripts",
+    "src",
+    "skills"
+  ],
+  "scripts": {
+    "prepack": "npm test && npm run validate:skill",
+    "smoke:install": "node scripts/smoke-install.mjs",
+    "test": "node --test",
+    "validate:skill": "node scripts/validate-skill.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

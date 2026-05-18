@@ -1,0 +1,7 @@
+interface:
+  display_name: "Howells Boundaries"
+  short_description: "Turborepo package boundary enforcement"
+  default_prompt: "Use $howells-boundaries to add and check package-level boundaries in this Turborepo workspace."
+
+policy:
+  allow_implicit_invocation: true
