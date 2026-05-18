@@ -15,8 +15,9 @@ pnpm add -D @howells/boundaries
 Try without installing:
 
 ```sh
-npx @howells/boundaries --help
+npx @howells/boundaries
 npx @howells/boundaries init --dry-run
+npx @howells/boundaries --help
 ```
 
 Initialize boundary config:

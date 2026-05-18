@@ -15,7 +15,9 @@ import {
 } from "./output.js";
 import { commandSchema } from "./schema.js";
 
-const HELP = `Usage: boundaries <command>
+const HELP = `Usage: boundaries [command]
+
+Default command: check
 
 Commands:
   init                 Add Howells boundary conventions to a Turborepo workspace
@@ -28,13 +30,15 @@ async function main(argv) {
   const [command, ...args] = argv;
   const json = hasFlag(argv, "--json");
   const schema = hasFlag(argv, "--schema");
+  const effectiveCommand = !command || command.startsWith("-") ? "check" : command;
+  const effectiveArgs = !command || command.startsWith("-") ? argv : args;
 
   if (schema) {
     writeJson(process.stdout, success(commandSchema));
     return EXIT_CODES.OK;
   }
 
-  if (!command || command === "help" || command === "--help" || command === "-h") {
+  if (command === "help" || command === "--help" || command === "-h") {
     if (json) {
       writeJson(process.stdout, success(commandSchema));
       return EXIT_CODES.OK;
@@ -43,8 +47,8 @@ async function main(argv) {
     return EXIT_CODES.OK;
   }
 
-  if (command === "init") {
-    const result = await initRepository({ dryRun: hasFlag(args, "--dry-run") });
+  if (effectiveCommand === "init") {
+    const result = await initRepository({ dryRun: hasFlag(effectiveArgs, "--dry-run") });
     if (json) {
       writeJson(process.stdout, success(summarizeInitResult(result)));
     } else {
@@ -55,9 +59,9 @@ async function main(argv) {
     return EXIT_CODES.OK;
   }
 
-  if (command === "check") {
+  if (effectiveCommand === "check") {
     const result = await checkRepository({
-      runTurbo: !args.includes("--no-turbo"),
+      runTurbo: !effectiveArgs.includes("--no-turbo"),
       quiet: json,
     });
     if (json) {
@@ -65,7 +69,7 @@ async function main(argv) {
         writeJson(process.stdout, success({
           ok: true,
           workspaceCount: result.workspaces?.length ?? 0,
-          ranTurbo: !args.includes("--no-turbo"),
+          ranTurbo: !effectiveArgs.includes("--no-turbo"),
           turbo: result.turbo
             ? { exitCode: result.turbo.exitCode, stdout: result.turbo.stdout, stderr: result.turbo.stderr }
             : undefined,
@@ -88,8 +92,8 @@ async function main(argv) {
     return result.exitCode;
   }
 
-  if (command === "explain") {
-    return explain(stripFlags(args, ["--json"]), { json });
+  if (effectiveCommand === "explain") {
+    return explain(stripFlags(effectiveArgs, ["--json"]), { json });
   }
 
   const error = {

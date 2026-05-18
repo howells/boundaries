@@ -12,10 +12,24 @@ const cliPath = new URL("../src/cli.js", import.meta.url);
 test("prints command help for the boundaries binary", async () => {
   const { stdout } = await execFileAsync(process.execPath, [cliPath.pathname, "--help"]);
 
-  assert.match(stdout, /Usage: boundaries <command>/);
+  assert.match(stdout, /Usage: boundaries \[command\]/);
+  assert.match(stdout, /Default command: check/);
   assert.match(stdout, /init/);
   assert.match(stdout, /check/);
   assert.match(stdout, /explain/);
+});
+
+test("defaults to check when no command is provided", async () => {
+  const root = await createFixtureRepo();
+  await execFileAsync(process.execPath, [cliPath.pathname, "init"], { cwd: root });
+
+  const { stdout } = await execFileAsync(
+    process.execPath,
+    [cliPath.pathname, "--no-turbo"],
+    { cwd: root },
+  );
+
+  assert.match(stdout, /Boundary configuration is valid for 2 workspaces/);
 });
 
 test("runs boundaries init from the command line", async () => {

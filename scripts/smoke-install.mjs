@@ -24,7 +24,7 @@ await execFileAsync("npm", ["init", "-y"], { cwd: temp });
 await execFileAsync("npm", ["install", tarball, "--ignore-scripts"], { cwd: temp });
 
 const { stdout } = await execFileAsync("npx", ["boundaries", "--help"], { cwd: temp });
-if (!stdout.includes("Usage: boundaries <command>")) {
+if (!stdout.includes("Usage: boundaries [command]")) {
   throw new Error("Installed boundaries binary did not print expected help.");
 }
 

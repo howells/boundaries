@@ -1,6 +1,7 @@
 export const commandSchema = {
   name: "boundaries",
   description: "Opinionated Turborepo package boundary conventions.",
+  defaultCommand: "check",
   commands: [
     {
       name: "init",
