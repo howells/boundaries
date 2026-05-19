@@ -1,5 +1,5 @@
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 
 import {
   applyRootBoundaryConfig,
@@ -116,11 +116,24 @@ function parsePnpmWorkspacePackages(contents) {
 }
 
 async function discoverPattern(root, pattern) {
-  if (!pattern.endsWith("/*")) {
+  const normalizedPattern = normalizeWorkspacePattern(pattern);
+  if (!normalizedPattern || normalizedPattern.startsWith("!")) {
     return [];
   }
 
-  const parentPath = pattern.slice(0, -2);
+  if (normalizedPattern.endsWith("/*")) {
+    return discoverGlobPattern(root, normalizedPattern);
+  }
+
+  if (normalizedPattern.includes("*")) {
+    return [];
+  }
+
+  return discoverExactPattern(root, normalizedPattern);
+}
+
+async function discoverGlobPattern(root, pattern) {
+  const parentPath = assertSafeWorkspacePath(root, pattern.slice(0, -2), pattern);
   const absoluteParentPath = join(root, parentPath);
   let entries;
 
@@ -153,6 +166,40 @@ async function discoverPattern(root, pattern) {
   }
 
   return workspaces;
+}
+
+async function discoverExactPattern(root, pattern) {
+  const workspacePath = assertSafeWorkspacePath(root, pattern, pattern);
+  const packageJson = await readJson(join(root, workspacePath, "package.json"), null);
+  if (!packageJson) {
+    return [];
+  }
+
+  return [{
+    name: packageJson.name,
+    packageJson,
+    path: workspacePath,
+  }];
+}
+
+function assertSafeWorkspacePath(root, workspacePath, pattern) {
+  const resolvedRoot = resolve(root);
+  const resolvedWorkspace = resolve(root, workspacePath);
+  const relativeWorkspace = relative(resolvedRoot, resolvedWorkspace);
+
+  if (relativeWorkspace.startsWith("..") || isAbsolute(relativeWorkspace)) {
+    const error = new Error(`Workspace pattern escapes repository root: ${pattern}`);
+    error.code = "UNSAFE_WORKSPACE_PATTERN";
+    error.is_retriable = false;
+    error.suggestions = ["Use workspace paths inside the repository root."];
+    throw error;
+  }
+
+  return normalizeWorkspacePattern(relativeWorkspace);
+}
+
+function normalizeWorkspacePattern(pattern) {
+  return pattern.replaceAll("\\", "/").replace(/^\.?\//, "").replace(/\/$/, "");
 }
 
 async function readJson(filePath, fallback = undefined) {

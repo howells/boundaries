@@ -25,8 +25,6 @@ type:app
 type:package
 type:tooling
 scope:<name>
-platform:browser
-platform:node
 visibility:public
 visibility:internal
 ```

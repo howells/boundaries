@@ -68,6 +68,54 @@ test("initializes a Turborepo workspace with boundary tags and scripts", async (
   });
 });
 
+test("rejects workspace patterns that resolve outside the repository root", async () => {
+  const temp = await mkdtemp(join(tmpdir(), "boundaries-"));
+  const root = join(temp, "repo");
+  const outsidePackage = join(temp, "outside/pkg");
+
+  await mkdir(root, { recursive: true });
+  await mkdir(outsidePackage, { recursive: true });
+  await writeJson(join(root, "package.json"), {
+    private: true,
+    workspaces: ["../outside/*"],
+  });
+  await writeJson(join(root, "turbo.json"), {
+    tasks: {},
+  });
+  await writeJson(join(outsidePackage, "package.json"), {
+    name: "outside-pkg",
+    private: true,
+  });
+
+  await assert.rejects(
+    initRepository({ root }),
+    { code: "UNSAFE_WORKSPACE_PATTERN" },
+  );
+  await assert.rejects(readFile(join(outsidePackage, "turbo.json"), "utf8"), {
+    code: "ENOENT",
+  });
+});
+
+test("discovers exact workspace package paths", async () => {
+  const root = await mkdtemp(join(tmpdir(), "boundaries-"));
+
+  await writeJson(join(root, "package.json"), {
+    private: true,
+    workspaces: ["packages/ui"],
+  });
+  await writeJson(join(root, "turbo.json"), {
+    tasks: {},
+  });
+  await writePackage(root, "packages/ui", "@acme/ui");
+
+  const result = await initRepository({ root, dryRun: true });
+
+  assert.deepEqual(result.workspaces.map((workspace) => workspace.path), [
+    "packages/ui",
+  ]);
+  assert.equal(result.plannedWrites.some((write) => write.path === "packages/ui/turbo.json"), true);
+});
+
 async function writePackage(root, relativePath, name) {
   const directory = join(root, relativePath);
   await mkdir(directory, { recursive: true });

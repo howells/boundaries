@@ -1,6 +1,6 @@
 {
   "name": "@howells/boundaries",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Opinionated Turborepo package boundary conventions.",
   "type": "module",
   "bin": {

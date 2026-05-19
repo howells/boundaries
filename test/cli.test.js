@@ -115,6 +115,24 @@ test("prints JSON for check config failures", async () => {
   assert.equal(response.data.errors[0].file, "turbo.json");
 });
 
+test("prints structured JSON errors for unsafe workspace patterns", async () => {
+  const temp = await mkdtemp(join(tmpdir(), "boundaries-cli-"));
+  const root = join(temp, "repo");
+  await mkdir(root, { recursive: true });
+  await writeJson(join(root, "package.json"), {
+    private: true,
+    workspaces: ["../outside/*"],
+  });
+
+  const { stderr, code } = await execCli(["init", "--json"], { cwd: root });
+
+  assert.equal(code, 70);
+  const response = JSON.parse(stderr);
+  assert.equal(response.success, false);
+  assert.equal(response.error.code, "UNSAFE_WORKSPACE_PATTERN");
+  assert.equal(response.error.is_retriable, false);
+});
+
 test("prints JSON for explain decisions", async () => {
   const root = await createFixtureRepo({ includeSecondApp: true });
   await execFileAsync(process.execPath, [cliPath.pathname, "init"], { cwd: root });

@@ -71,7 +71,7 @@ async function main(argv) {
           workspaceCount: result.workspaces?.length ?? 0,
           ranTurbo: !effectiveArgs.includes("--no-turbo"),
           turbo: result.turbo
-            ? { exitCode: result.turbo.exitCode, stdout: result.turbo.stdout, stderr: result.turbo.stderr }
+            ? summarizeTurboResult(result.turbo)
             : undefined,
         }));
       } else {
@@ -84,7 +84,7 @@ async function main(argv) {
         writeJson(process.stderr, failure(primary, {
           errors: result.errors,
           turbo: result.turbo
-            ? { exitCode: result.turbo.exitCode, stdout: result.turbo.stdout, stderr: result.turbo.stderr }
+            ? summarizeTurboResult(result.turbo)
             : undefined,
         }));
       }
@@ -198,6 +198,16 @@ function summarizeInitResult(result) {
   };
 }
 
+function summarizeTurboResult(result) {
+  return {
+    exitCode: result.exitCode,
+    stdout: result.stdout,
+    stderr: result.stderr,
+    ...(result.stdoutTruncated ? { stdoutTruncated: true } : {}),
+    ...(result.stderrTruncated ? { stderrTruncated: true } : {}),
+  };
+}
+
 function describeWorkspace(workspace, tags) {
   return {
     name: workspace.name,
@@ -235,10 +245,10 @@ main(process.argv.slice(2))
   .catch((error) => {
     const json = process.argv.includes("--json");
     const problem = {
-      code: error.code === "ENOENT" ? "FILE_NOT_FOUND" : "UNHANDLED_ERROR",
+      code: error.code === "ENOENT" ? "FILE_NOT_FOUND" : error.code ?? "UNHANDLED_ERROR",
       message: error.message,
-      is_retriable: false,
-      suggestions: ["Check that you are running from a workspace root with package.json."],
+      is_retriable: error.is_retriable ?? false,
+      suggestions: error.suggestions ?? ["Check that you are running from a workspace root with package.json."],
     };
     if (json) {
       writeJson(process.stderr, failure(problem));

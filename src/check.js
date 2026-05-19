@@ -4,6 +4,8 @@ import { join } from "node:path";
 
 import { discoverWorkspaces } from "./init.js";
 
+const OUTPUT_CAPTURE_LIMIT = 64 * 1024;
+
 export async function checkRepository({
   root = process.cwd(),
   runTurbo = true,
@@ -81,13 +83,19 @@ function runTurboBoundaries({ root, quiet }) {
     });
     let stdout = "";
     let stderr = "";
+    let stdoutTruncated = false;
+    let stderrTruncated = false;
 
     if (quiet) {
       child.stdout?.on("data", (chunk) => {
-        stdout += chunk.toString();
+        const captured = appendCapturedOutput(stdout, chunk.toString());
+        stdout = captured.output;
+        stdoutTruncated ||= captured.truncated;
       });
       child.stderr?.on("data", (chunk) => {
-        stderr += chunk.toString();
+        const captured = appendCapturedOutput(stderr, chunk.toString());
+        stderr = captured.output;
+        stderrTruncated ||= captured.truncated;
       });
     }
 
@@ -101,7 +109,14 @@ function runTurboBoundaries({ root, quiet }) {
       if (!quiet) {
         process.stderr.write(`boundaries: ${problem.message} ${problem.suggestions[0]}\n`);
       }
-      resolve({ exitCode: 69, stdout, stderr, error: problem });
+      resolve({
+        exitCode: 69,
+        stdout,
+        stderr,
+        stdoutTruncated,
+        stderrTruncated,
+        error: problem,
+      });
     });
 
     child.on("close", (code) => {
@@ -110,6 +125,8 @@ function runTurboBoundaries({ root, quiet }) {
         exitCode,
         stdout,
         stderr,
+        stdoutTruncated,
+        stderrTruncated,
         error: exitCode === 0
           ? undefined
           : {
@@ -121,6 +138,25 @@ function runTurboBoundaries({ root, quiet }) {
       });
     });
   });
+}
+
+function appendCapturedOutput(currentOutput, chunk) {
+  const available = OUTPUT_CAPTURE_LIMIT - currentOutput.length;
+  if (available <= 0) {
+    return { output: currentOutput, truncated: chunk.length > 0 };
+  }
+
+  if (chunk.length >= available) {
+    return {
+      output: `${currentOutput}${chunk.slice(0, available)}`,
+      truncated: true,
+    };
+  }
+
+  return {
+    output: `${currentOutput}${chunk}`,
+    truncated: false,
+  };
 }
 
 async function readJson(filePath, fallback = undefined) {

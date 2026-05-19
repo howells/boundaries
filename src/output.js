@@ -22,7 +22,7 @@ export function failure(error, data = undefined) {
   };
 }
 
-export function problem({
+function problem({
   code,
   message,
   is_retriable = false,
