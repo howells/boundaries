@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, symlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import test from "node:test";
@@ -86,6 +86,35 @@ test("rejects workspace patterns that resolve outside the repository root", asyn
     name: "outside-pkg",
     private: true,
   });
+
+  await assert.rejects(
+    initRepository({ root }),
+    { code: "UNSAFE_WORKSPACE_PATTERN" },
+  );
+  await assert.rejects(readFile(join(outsidePackage, "turbo.json"), "utf8"), {
+    code: "ENOENT",
+  });
+});
+
+test("rejects workspace symlinks that resolve outside the repository root", async () => {
+  const temp = await mkdtemp(join(tmpdir(), "boundaries-"));
+  const root = join(temp, "repo");
+  const outsidePackage = join(temp, "outside-package");
+
+  await mkdir(join(root, "packages"), { recursive: true });
+  await mkdir(outsidePackage, { recursive: true });
+  await writeJson(join(root, "package.json"), {
+    private: true,
+    workspaces: ["packages/link"],
+  });
+  await writeJson(join(root, "turbo.json"), {
+    tasks: {},
+  });
+  await writeJson(join(outsidePackage, "package.json"), {
+    name: "outside-package",
+    private: true,
+  });
+  await symlink(outsidePackage, join(root, "packages/link"), "dir");
 
   await assert.rejects(
     initRepository({ root }),

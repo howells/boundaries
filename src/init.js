@@ -1,4 +1,4 @@
-import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, realpath, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 
 import {
@@ -134,6 +134,7 @@ async function discoverPattern(root, pattern) {
 
 async function discoverGlobPattern(root, pattern) {
   const parentPath = assertSafeWorkspacePath(root, pattern.slice(0, -2), pattern);
+  await assertRealPathInsideRoot(root, parentPath, pattern);
   const absoluteParentPath = join(root, parentPath);
   let entries;
 
@@ -170,6 +171,7 @@ async function discoverGlobPattern(root, pattern) {
 
 async function discoverExactPattern(root, pattern) {
   const workspacePath = assertSafeWorkspacePath(root, pattern, pattern);
+  await assertRealPathInsideRoot(root, workspacePath, pattern);
   const packageJson = await readJson(join(root, workspacePath, "package.json"), null);
   if (!packageJson) {
     return [];
@@ -196,6 +198,30 @@ function assertSafeWorkspacePath(root, workspacePath, pattern) {
   }
 
   return normalizeWorkspacePattern(relativeWorkspace);
+}
+
+async function assertRealPathInsideRoot(root, workspacePath, pattern) {
+  const resolvedRoot = await realpath(root);
+  let resolvedWorkspace;
+
+  try {
+    resolvedWorkspace = await realpath(resolve(root, workspacePath));
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      return;
+    }
+    throw error;
+  }
+
+  const relativeWorkspace = relative(resolvedRoot, resolvedWorkspace);
+
+  if (relativeWorkspace.startsWith("..") || isAbsolute(relativeWorkspace)) {
+    const error = new Error(`Workspace pattern escapes repository root: ${pattern}`);
+    error.code = "UNSAFE_WORKSPACE_PATTERN";
+    error.is_retriable = false;
+    error.suggestions = ["Use workspace paths inside the repository root."];
+    throw error;
+  }
 }
 
 function normalizeWorkspacePattern(pattern) {
@@ -230,6 +256,8 @@ async function writeJson(filePath, value) {
 }
 
 async function planJsonWrite({ root, filePath, value, dryRun, plannedWrites }) {
+  await assertRealPathInsideRoot(root, dirname(filePath), filePath);
+
   plannedWrites.push({
     path: relativePath(root, filePath),
     kind: "json",
