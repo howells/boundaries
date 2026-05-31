@@ -1,6 +1,6 @@
 # @howells/boundaries
 
-Opinionated package-boundary conventions for Turborepo workspaces.
+Opinionated boundary conventions for JavaScript and TypeScript workspaces.
 
 The executable is `boundaries`.
 
@@ -17,6 +17,7 @@ Try without installing:
 ```sh
 npx @howells/boundaries
 npx @howells/boundaries init --dry-run
+npx @howells/boundaries check --profile feature-sliced
 npx @howells/boundaries --help
 ```
 
@@ -44,6 +45,14 @@ or:
 pnpm exec boundaries check
 ```
 
+Check a common JavaScript source architecture without requiring Turbo:
+
+```sh
+pnpm exec boundaries check --profile feature-sliced
+pnpm exec boundaries check --profile next-feature
+pnpm exec boundaries check --profile clean-node
+```
+
 Explain a relationship:
 
 ```sh
@@ -56,6 +65,7 @@ Machine-readable output:
 ```sh
 pnpm exec boundaries --schema
 pnpm exec boundaries init --dry-run --json
+pnpm exec boundaries check --profile feature-sliced --json
 pnpm exec boundaries explain apps/web packages/ui --json
 ```
 
@@ -93,3 +103,17 @@ turbo boundaries
 ```
 
 Use this in Turborepo repos that already have `turbo` installed.
+
+`boundaries check --profile <name>` uses the built-in JavaScript import scanner instead of Turbo. It supports relative imports plus common root aliases such as `@/`, `~/`, and `src/`.
+
+## JavaScript Profiles
+
+Profiles enforce layer direction over `src/` imports:
+
+```text
+feature-sliced: app -> pages -> widgets -> features -> entities -> shared
+next-feature:   app/pages -> components -> features -> entities -> lib/shared
+clean-node:     adapters/infrastructure -> application -> domain
+```
+
+Higher layers may import lower layers. Lower layers may not import higher layers.

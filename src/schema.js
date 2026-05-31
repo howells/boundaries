@@ -14,12 +14,13 @@ export const commandSchema = {
     },
     {
       name: "check",
-      description: "Validate boundary config and optionally run turbo boundaries.",
+      description: "Validate Turbo boundary config or a JS architecture profile.",
       options: [
         option("--json", "Print a machine-readable response envelope."),
         option("--no-turbo", "Validate convention config without running turbo boundaries."),
+        option("--profile", "Check a JS architecture profile: feature-sliced, next-feature, or clean-node."),
       ],
-      output: "CheckResult",
+      output: "CheckResult | ProfileCheckResult",
     },
     {
       name: "explain",

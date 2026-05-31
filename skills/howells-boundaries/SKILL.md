@@ -1,11 +1,11 @@
 ---
 name: howells-boundaries
-description: Use when adding, checking, explaining, or repairing package-level architecture boundaries in Turborepo JavaScript/TypeScript monorepos with the `boundaries` CLI from `@howells/boundaries`.
+description: Use when adding, checking, explaining, or repairing JavaScript/TypeScript package and source architecture boundaries with the `boundaries` CLI from `@howells/boundaries`.
 ---
 
 # Howells Boundaries
 
-Use `@howells/boundaries` for package-level architecture enforcement in Turborepo workspaces. The executable is `boundaries`.
+Use `@howells/boundaries` for architecture boundary enforcement in JavaScript and TypeScript codebases. The executable is `boundaries`.
 
 ## Workflow
 
@@ -15,6 +15,14 @@ Use `@howells/boundaries` for package-level architecture enforcement in Turborep
 4. Review generated tags before accepting them. Fix incorrect tags instead of weakening policy.
 5. Run `boundaries check`.
 6. If a violation appears, prefer fixing the import or dependency declaration. Use exceptions only when they are narrow, temporary, and documented.
+
+For non-Turbo source-layout checks, run a JavaScript profile directly:
+
+```sh
+boundaries check --profile feature-sliced
+boundaries check --profile next-feature
+boundaries check --profile clean-node
+```
 
 ## Default Model
 
@@ -39,6 +47,18 @@ type:tooling  cannot depend on type:app
 
 This blocks app-to-app imports and keeps shared packages from reaching into deployable apps. Treat `visibility:*` as metadata until the checker can distinguish runtime dependencies from dev-only tooling dependencies.
 
+## JavaScript Profiles
+
+Use `--profile` when the repo is not primarily relying on Turbo package boundaries:
+
+```text
+feature-sliced: app -> pages -> widgets -> features -> entities -> shared
+next-feature:   app/pages -> components -> features -> entities -> lib/shared
+clean-node:     adapters/infrastructure -> application -> domain
+```
+
+Higher layers may import lower layers. Lower layers should not import higher layers.
+
 ## Good Fixes
 
 - Move shared code from an app into a package, then import the package.
@@ -51,7 +71,7 @@ This blocks app-to-app imports and keeps shared packages from reaching into depl
 - Do not use ESLint as the primary enforcement mechanism.
 - Do not add broad allowlists to make a check pass.
 - Do not move task logic into root `package.json`; keep Turbo package tasks in packages and root scripts as delegators.
-- Do not invent package-internal layer rules for this tool. Keep v1 package-level; use another tool later for module-level boundaries if needed.
+- Do not invent bespoke package-internal layer rules when a named profile fits. Pick a profile first, then add narrow project-specific exceptions later.
 
 ## Fallbacks
 

@@ -70,6 +70,7 @@ test("prints machine-readable help schema", async () => {
     ["init", "check", "explain", "help"],
   );
   assert.equal(schema.data.commands[0].options.some((option) => option.name === "--dry-run"), true);
+  assert.equal(schema.data.commands[1].options.some((option) => option.name === "--profile"), true);
 });
 
 test("prints JSON for init dry-run and does not write files", async () => {
@@ -113,6 +114,39 @@ test("prints JSON for check config failures", async () => {
   assert.equal(response.success, false);
   assert.equal(response.error.code, "ROOT_BOUNDARIES_MISSING");
   assert.equal(response.data.errors[0].file, "turbo.json");
+});
+
+test("prints JSON for profile check violations", async () => {
+  const root = await mkdtemp(join(tmpdir(), "boundaries-cli-"));
+  await mkdir(join(root, "src/shared"), { recursive: true });
+  await mkdir(join(root, "src/features/search"), { recursive: true });
+  await writeFile(join(root, "src/shared/date.js"), 'import "../features/search/model.js";\n');
+  await writeFile(join(root, "src/features/search/model.js"), "export const model = {};\n");
+
+  const { stderr, code } = await execCli(["check", "--profile", "feature-sliced", "--json"], { cwd: root });
+
+  assert.equal(code, 1);
+  const response = JSON.parse(stderr);
+  assert.equal(response.success, false);
+  assert.equal(response.error.code, "PROFILE_BOUNDARY_VIOLATIONS");
+  assert.equal(response.data.profile, "feature-sliced");
+  assert.equal(response.data.violations.length, 1);
+});
+
+test("prints JSON for clean profile checks", async () => {
+  const root = await mkdtemp(join(tmpdir(), "boundaries-cli-"));
+  await mkdir(join(root, "src/features/search"), { recursive: true });
+  await mkdir(join(root, "src/shared"), { recursive: true });
+  await writeFile(join(root, "src/features/search/model.js"), 'import "../../shared/date.js";\n');
+  await writeFile(join(root, "src/shared/date.js"), "export const format = () => '';\n");
+
+  const { stdout, code } = await execCli(["check", "--profile=feature-sliced", "--json"], { cwd: root });
+
+  assert.equal(code, 0);
+  const response = JSON.parse(stdout);
+  assert.equal(response.success, true);
+  assert.equal(response.data.profile, "feature-sliced");
+  assert.equal(response.data.violations.length, 0);
 });
 
 test("prints structured JSON errors for unsafe workspace patterns", async () => {

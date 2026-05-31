@@ -13,6 +13,7 @@ import {
   success,
   writeJson,
 } from "./output.js";
+import { checkProfile } from "./profile-check.js";
 import { commandSchema } from "./schema.js";
 
 const HELP = `Usage: boundaries [command]
@@ -22,6 +23,7 @@ Default command: check
 Commands:
   init                 Add Howells boundary conventions to a Turborepo workspace
   check [--no-turbo]   Validate boundary config and run turbo boundaries
+  check --profile <name>  Check JS architecture profile boundaries
   explain <from> <to>  Explain whether one workspace may depend on another
   help                 Show this help
 `;
@@ -60,6 +62,26 @@ async function main(argv) {
   }
 
   if (effectiveCommand === "check") {
+    const profile = optionValue(effectiveArgs, "--profile");
+    if (profile) {
+      const result = await checkProfile({ profile });
+      if (json) {
+        if (result.ok) {
+          writeJson(process.stdout, success(result));
+        } else {
+          writeJson(process.stderr, failure(profileViolationProblem(result), result));
+        }
+      } else if (result.ok) {
+        process.stdout.write(`Profile ${result.profile} is valid across ${result.filesChecked} file${result.filesChecked === 1 ? "" : "s"}.\n`);
+      } else {
+        process.stderr.write(`Profile ${result.profile} found ${result.violations.length} violation${result.violations.length === 1 ? "" : "s"}:\n`);
+        for (const violation of result.violations) {
+          process.stderr.write(`- ${violation.from} -> ${violation.specifier}: ${violation.rule}\n`);
+        }
+      }
+      return result.ok ? EXIT_CODES.OK : 1;
+    }
+
     const result = await checkRepository({
       runTurbo: !effectiveArgs.includes("--no-turbo"),
       quiet: json,
@@ -208,12 +230,34 @@ function summarizeTurboResult(result) {
   };
 }
 
+function profileViolationProblem(result) {
+  return {
+    code: "PROFILE_BOUNDARY_VIOLATIONS",
+    message: `${result.violations.length} profile boundary violation${result.violations.length === 1 ? "" : "s"} found.`,
+    is_retriable: false,
+    suggestions: ["Move the import to a lower layer or adjust the selected architecture profile."],
+  };
+}
+
 function describeWorkspace(workspace, tags) {
   return {
     name: workspace.name,
     path: workspace.path,
     tags,
   };
+}
+
+function optionValue(args, name) {
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+    if (arg === name) {
+      return args[index + 1];
+    }
+    if (arg.startsWith(`${name}=`)) {
+      return arg.slice(name.length + 1);
+    }
+  }
+  return undefined;
 }
 
 function findWorkspace(workspaces, selector) {
