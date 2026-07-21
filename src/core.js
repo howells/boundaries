@@ -21,7 +21,8 @@ export function inferTagsForWorkspace(workspace) {
   const packageName = workspace.name ?? "";
   const scope = inferScope(normalizedPath, packageName);
   const type = inferType(normalizedPath);
-  const visibility = workspace.packageJson?.private === false ? "public" : "internal";
+  const visibility =
+    workspace.packageJson?.private === false ? "public" : "internal";
 
   return [`type:${type}`, `scope:${scope}`, `visibility:${visibility}`];
 }
@@ -38,10 +39,10 @@ export function applyRootBoundaryConfig(currentConfig = {}) {
   return {
     ...currentConfig,
     boundaries: {
-      ...(currentConfig.boundaries ?? {}),
+      ...currentConfig.boundaries,
       tags: mergeBoundaryTags(
         DEFAULT_ROOT_BOUNDARY_TAGS,
-        currentConfig.boundaries?.tags ?? {},
+        currentConfig.boundaries?.tags ?? {}
       ),
     },
   };
@@ -60,10 +61,10 @@ export function evaluateDependency({
 
   for (const fromTag of fromTags) {
     const dependencyDecision = evaluateRuleSet({
-      ruleSet: tagRules[fromTag]?.dependencies,
+      activeTag: fromTag,
       candidateSelectors: targetSelectors,
       direction: "dependency",
-      activeTag: fromTag,
+      ruleSet: tagRules[fromTag]?.dependencies,
     });
 
     if (!dependencyDecision.allowed) {
@@ -73,10 +74,10 @@ export function evaluateDependency({
 
   for (const toTag of toTags) {
     const dependentDecision = evaluateRuleSet({
-      ruleSet: tagRules[toTag]?.dependents,
+      activeTag: toTag,
       candidateSelectors: sourceSelectors,
       direction: "dependent",
-      activeTag: toTag,
+      ruleSet: tagRules[toTag]?.dependents,
     });
 
     if (!dependentDecision.allowed) {
@@ -87,12 +88,19 @@ export function evaluateDependency({
   return { allowed: true, reason: "No boundary rule blocks this dependency." };
 }
 
-function evaluateRuleSet({ ruleSet, candidateSelectors, direction, activeTag }) {
+function evaluateRuleSet({
+  ruleSet,
+  candidateSelectors,
+  direction,
+  activeTag,
+}) {
   if (!ruleSet) {
     return { allowed: true };
   }
 
-  const denied = ruleSet.deny?.find((selector) => candidateSelectors.has(selector));
+  const denied = ruleSet.deny?.find((selector) =>
+    candidateSelectors.has(selector)
+  );
   if (denied) {
     return {
       allowed: false,
@@ -101,7 +109,9 @@ function evaluateRuleSet({ ruleSet, candidateSelectors, direction, activeTag }) 
   }
 
   if (ruleSet.allow?.length > 0) {
-    const allowed = ruleSet.allow.some((selector) => candidateSelectors.has(selector));
+    const allowed = ruleSet.allow.some((selector) =>
+      candidateSelectors.has(selector)
+    );
     if (!allowed) {
       return {
         allowed: false,
@@ -129,9 +139,12 @@ function mergeBoundaryTag(defaultTag, existingTag) {
     ...existingTag,
     dependencies: mergeRelationship(
       defaultTag.dependencies,
-      existingTag.dependencies,
+      existingTag.dependencies
     ),
-    dependents: mergeRelationship(defaultTag.dependents, existingTag.dependents),
+    dependents: mergeRelationship(
+      defaultTag.dependents,
+      existingTag.dependents
+    ),
   };
 
   if (!merged.dependencies) {
@@ -147,12 +160,12 @@ function mergeBoundaryTag(defaultTag, existingTag) {
 
 function mergeRelationship(defaultRelationship, existingRelationship) {
   if (!defaultRelationship && !existingRelationship) {
-    return undefined;
+    return;
   }
 
   const merged = {
-    ...(defaultRelationship ?? {}),
-    ...(existingRelationship ?? {}),
+    ...defaultRelationship,
+    ...existingRelationship,
   };
 
   const allow = unique([
@@ -223,11 +236,17 @@ function ensureRootExtends(extendsValue) {
 }
 
 function normalizePath(value) {
-  return value.replaceAll("\\", "/").replace(/^\.?\//, "").replace(/\/$/, "");
+  return value
+    .replaceAll("\\", "/")
+    .replace(/^\.?\//, "")
+    .replace(/\/$/, "");
 }
 
 function sanitizeTagValue(value) {
-  return value.toLowerCase().replace(/^@/, "").replaceAll(/[^a-z0-9._-]+/g, "-");
+  return value
+    .toLowerCase()
+    .replace(/^@/, "")
+    .replaceAll(/[^a-z0-9._-]+/g, "-");
 }
 
 function unique(values) {

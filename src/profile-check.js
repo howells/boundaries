@@ -1,7 +1,14 @@
 import { readdir, readFile } from "node:fs/promises";
 import { dirname, extname, join, relative, resolve } from "node:path";
 
-const SOURCE_EXTENSIONS = new Set([".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs"]);
+const SOURCE_EXTENSIONS = new Set([
+  ".js",
+  ".jsx",
+  ".ts",
+  ".tsx",
+  ".mjs",
+  ".cjs",
+]);
 const IGNORED_DIRECTORIES = new Set([
   ".git",
   ".next",
@@ -12,36 +19,39 @@ const IGNORED_DIRECTORIES = new Set([
 ]);
 
 const PROFILE_DEFINITIONS = {
+  "clean-node": {
+    description:
+      "Clean/hexagonal Node.js layering: adapters/infrastructure -> application -> domain.",
+    layers: {
+      adapters: 3,
+      application: 2,
+      domain: 1,
+      infrastructure: 3,
+    },
+  },
   "feature-sliced": {
-    description: "Feature-Sliced Design style app/pages/widgets/features/entities/shared ordering.",
+    description:
+      "Feature-Sliced Design style app/pages/widgets/features/entities/shared ordering.",
     layers: {
       app: 5,
-      pages: 4,
-      widgets: 3,
-      features: 2,
       entities: 1,
+      features: 2,
+      pages: 4,
       shared: 0,
+      widgets: 3,
     },
   },
   "next-feature": {
-    description: "Next.js app router with feature, entity, and shared source layers.",
+    description:
+      "Next.js app router with feature, entity, and shared source layers.",
     layers: {
       app: 4,
-      pages: 4,
       components: 3,
-      features: 2,
       entities: 1,
+      features: 2,
       lib: 0,
+      pages: 4,
       shared: 0,
-    },
-  },
-  "clean-node": {
-    description: "Clean/hexagonal Node.js layering: adapters/infrastructure -> application -> domain.",
-    layers: {
-      adapters: 3,
-      infrastructure: 3,
-      application: 2,
-      domain: 1,
     },
   },
 };
@@ -52,7 +62,9 @@ export async function checkProfile({ root = process.cwd(), profile }) {
     const error = new Error(`Unknown profile: ${profile}`);
     error.code = "UNKNOWN_PROFILE";
     error.is_retriable = false;
-    error.suggestions = [`Use one of: ${Object.keys(PROFILE_DEFINITIONS).join(", ")}`];
+    error.suggestions = [
+      `Use one of: ${Object.keys(PROFILE_DEFINITIONS).join(", ")}`,
+    ];
     throw error;
   }
 
@@ -66,9 +78,9 @@ export async function checkProfile({ root = process.cwd(), profile }) {
       continue;
     }
 
-    const source = await readFile(file, "utf8");
+    const source = await readFile(file, "utf-8");
     for (const specifier of importSpecifiers(source)) {
-      const to = resolveImportSpecifier({ root, fromFile: file, specifier });
+      const to = resolveImportSpecifier({ fromFile: file, root, specifier });
       if (!to) {
         continue;
       }
@@ -81,21 +93,21 @@ export async function checkProfile({ root = process.cwd(), profile }) {
       if (definition.layers[fromLayer] < definition.layers[toLayer]) {
         violations.push({
           from,
-          to,
-          specifier,
           fromLayer,
-          toLayer,
           rule: `${fromLayer} cannot import ${toLayer}`,
+          specifier,
+          to,
+          toLayer,
         });
       }
     }
   }
 
   return {
-    ok: violations.length === 0,
-    profile,
     description: definition.description,
     filesChecked: files.length,
+    ok: violations.length === 0,
+    profile,
     violations,
   };
 }
@@ -118,7 +130,7 @@ async function listSourceFiles(root, directory = root) {
     }
   }
 
-  return files.sort((left, right) => left.localeCompare(right));
+  return files.toSorted((left, right) => left.localeCompare(right));
 }
 
 function importSpecifiers(source) {

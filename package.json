@@ -1,39 +1,46 @@
 {
   "name": "@howells/boundaries",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Opinionated Turborepo package boundary conventions.",
-  "type": "module",
-  "bin": {
-    "boundaries": "src/cli.js"
+  "keywords": [
+    "architecture",
+    "boundaries",
+    "cli",
+    "monorepo",
+    "turborepo"
+  ],
+  "homepage": "https://www.npmjs.com/package/@howells/boundaries",
+  "bugs": {
+    "url": "https://github.com/howells/boundaries/issues"
   },
   "license": "MIT",
-  "keywords": [
-    "turborepo",
-    "monorepo",
-    "boundaries",
-    "architecture",
-    "cli"
-  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/howells/boundaries.git"
   },
-  "bugs": {
-    "url": "https://github.com/howells/boundaries/issues"
+  "bin": {
+    "boundaries": "src/cli.js"
   },
-  "homepage": "https://www.npmjs.com/package/@howells/boundaries",
   "files": [
     "AGENTS.md",
+    "CHANGELOG.md",
     "README.md",
     "scripts",
     "src",
     "skills"
   ],
+  "type": "module",
   "scripts": {
     "prepack": "npm test && npm run validate:skill",
     "smoke:install": "node scripts/smoke-install.mjs",
     "test": "node --test",
-    "validate:skill": "node scripts/validate-skill.mjs"
+    "validate:skill": "node scripts/validate-skill.mjs",
+    "lint": "howells-ox-check --config=oxlint.config.ts package.json src test scripts skills AGENTS.md CHANGELOG.md README.md oxlint.config.ts oxfmt.config.ts",
+    "lint:fix": "howells-ox-fix --config=oxlint.config.ts package.json src test scripts skills AGENTS.md CHANGELOG.md README.md oxlint.config.ts oxfmt.config.ts",
+    "format": "howells-oxfmt --write package.json src test scripts skills AGENTS.md CHANGELOG.md README.md oxlint.config.ts oxfmt.config.ts"
+  },
+  "devDependencies": {
+    "@howells/lint": "^0.2.1"
   },
   "engines": {
     "node": ">=20"

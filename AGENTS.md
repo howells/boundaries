@@ -33,14 +33,17 @@ node src/cli.js init --dry-run    # Preview generated Turbo boundary files
 ## Permissions
 
 Always:
+
 - Read and edit files in this package.
 - Run `npm test`, `npm run validate:skill`, and `npm pack --dry-run`.
 
 Ask first:
+
 - Publish a new npm version.
 - Change the default boundary policy.
 - Add runtime dependencies.
 
 Never:
+
 - Weaken generated boundary rules just to silence violations.
 - Edit user repos outside this package unless explicitly asked.

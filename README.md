@@ -102,6 +102,12 @@ This blocks app-to-app imports and keeps shared packages from reaching into depl
 turbo boundaries
 ```
 
+Before delegating, it creates a filtered temporary mirror without gitignored
+paths such as generated build output and caches, then runs Turbo in that mirror.
+Safe repository-internal symlinks are materialized so the mirror never links
+back into the original tree. This keeps ignored artifacts from producing false
+package-import violations without moving or renaming files in the working tree.
+
 Use this in Turborepo repos that already have `turbo` installed.
 
 `boundaries check --profile <name>` uses the built-in JavaScript import scanner instead of Turbo. It supports relative imports plus common root aliases such as `@/`, `~/`, and `src/`.

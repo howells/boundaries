@@ -1,20 +1,20 @@
 export const EXIT_CODES = {
-  OK: 0,
-  USAGE: 64,
   DATA: 65,
-  UNAVAILABLE: 69,
+  OK: 0,
   SOFTWARE: 70,
+  UNAVAILABLE: 69,
+  USAGE: 64,
 };
 
-export function success(data, metadata = undefined) {
+export function success(data, metadata) {
   return {
-    success: true,
     data,
+    success: true,
     ...(metadata ? { metadata } : {}),
   };
 }
 
-export function failure(error, data = undefined) {
+export function failure(error, data) {
   return {
     success: false,
     ...(data ? { data } : {}),
@@ -27,12 +27,12 @@ function problem({
   message,
   is_retriable = false,
   suggestions = [],
-  file = undefined,
+  file,
 }) {
   return {
     code,
-    message,
     is_retriable,
+    message,
     suggestions,
     ...(file ? { file } : {}),
   };

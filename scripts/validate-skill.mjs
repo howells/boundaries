@@ -1,7 +1,10 @@
 import { readFile } from "node:fs/promises";
 
-const skillPath = new URL("../skills/howells-boundaries/SKILL.md", import.meta.url);
-const skill = await readFile(skillPath, "utf8");
+const skillPath = new URL(
+  "../skills/howells-boundaries/SKILL.md",
+  import.meta.url
+);
+const skill = await readFile(skillPath, "utf-8");
 
 if (!skill.startsWith("---\n")) {
   fail("SKILL.md must start with YAML frontmatter.");
@@ -12,10 +15,16 @@ if (end === -1) {
   fail("SKILL.md frontmatter is not closed.");
 }
 
-const frontmatter = skill.slice(4, end);
-for (const field of ["name:", "description:"]) {
-  if (!frontmatter.includes(field)) {
-    fail(`SKILL.md frontmatter is missing ${field}`);
+const frontmatterFields = new Set(
+  skill
+    .slice(4, end)
+    .split("\n")
+    .map((line) => line.match(/^([A-Za-z][\w-]*):(?:\s|$)/)?.[1])
+    .filter(Boolean)
+);
+for (const field of ["name", "description"]) {
+  if (!frontmatterFields.has(field)) {
+    fail(`SKILL.md frontmatter is missing ${field}:`);
   }
 }
 

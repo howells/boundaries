@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { mkdir, mkdtemp, readFile, symlink, writeFile } from "node:fs/promises";
-import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 
 import { initRepository } from "../src/init.js";
@@ -17,7 +17,7 @@ test("initializes a Turborepo workspace with boundary tags and scripts", async (
   });
   await writeFile(
     join(root, "pnpm-workspace.yaml"),
-    "packages:\n  - apps/*\n  - packages/*\n  - services/*\n",
+    "packages:\n  - apps/*\n  - packages/*\n  - services/*\n"
   );
   await writeJson(join(root, "turbo.json"), {
     $schema: "https://turbo.build/schema.json",
@@ -35,12 +35,10 @@ test("initializes a Turborepo workspace with boundary tags and scripts", async (
 
   const result = await initRepository({ root });
 
-  assert.deepEqual(result.workspaces.map((workspace) => workspace.path), [
-    "apps/admin",
-    "apps/web",
-    "packages/ui",
-    "services/worker",
-  ]);
+  assert.deepEqual(
+    result.workspaces.map((workspace) => workspace.path),
+    ["apps/admin", "apps/web", "packages/ui", "services/worker"]
+  );
 
   const rootPackageJson = await readJson(join(root, "package.json"));
   assert.equal(rootPackageJson.scripts.boundaries, "boundaries check");
@@ -48,9 +46,10 @@ test("initializes a Turborepo workspace with boundary tags and scripts", async (
 
   const rootTurboJson = await readJson(join(root, "turbo.json"));
   assert.equal(rootTurboJson.tasks.build.dependsOn[0], "^build");
-  assert.deepEqual(rootTurboJson.boundaries.tags["type:app"].dependencies.deny, [
-    "type:app",
-  ]);
+  assert.deepEqual(
+    rootTurboJson.boundaries.tags["type:app"].dependencies.deny,
+    ["type:app"]
+  );
 
   assert.deepEqual(await readJson(join(root, "apps/web/turbo.json")), {
     extends: ["//"],
@@ -87,11 +86,10 @@ test("rejects workspace patterns that resolve outside the repository root", asyn
     private: true,
   });
 
-  await assert.rejects(
-    initRepository({ root }),
-    { code: "UNSAFE_WORKSPACE_PATTERN" },
-  );
-  await assert.rejects(readFile(join(outsidePackage, "turbo.json"), "utf8"), {
+  await assert.rejects(initRepository({ root }), {
+    code: "UNSAFE_WORKSPACE_PATTERN",
+  });
+  await assert.rejects(readFile(join(outsidePackage, "turbo.json"), "utf-8"), {
     code: "ENOENT",
   });
 });
@@ -116,11 +114,10 @@ test("rejects workspace symlinks that resolve outside the repository root", asyn
   });
   await symlink(outsidePackage, join(root, "packages/link"), "dir");
 
-  await assert.rejects(
-    initRepository({ root }),
-    { code: "UNSAFE_WORKSPACE_PATTERN" },
-  );
-  await assert.rejects(readFile(join(outsidePackage, "turbo.json"), "utf8"), {
+  await assert.rejects(initRepository({ root }), {
+    code: "UNSAFE_WORKSPACE_PATTERN",
+  });
+  await assert.rejects(readFile(join(outsidePackage, "turbo.json"), "utf-8"), {
     code: "ENOENT",
   });
 });
@@ -137,12 +134,18 @@ test("discovers exact workspace package paths", async () => {
   });
   await writePackage(root, "packages/ui", "@acme/ui");
 
-  const result = await initRepository({ root, dryRun: true });
+  const result = await initRepository({ dryRun: true, root });
 
-  assert.deepEqual(result.workspaces.map((workspace) => workspace.path), [
-    "packages/ui",
-  ]);
-  assert.equal(result.plannedWrites.some((write) => write.path === "packages/ui/turbo.json"), true);
+  assert.deepEqual(
+    result.workspaces.map((workspace) => workspace.path),
+    ["packages/ui"]
+  );
+  assert.equal(
+    result.plannedWrites.some(
+      (write) => write.path === "packages/ui/turbo.json"
+    ),
+    true
+  );
 });
 
 async function writePackage(root, relativePath, name) {
@@ -156,7 +159,7 @@ async function writePackage(root, relativePath, name) {
 }
 
 async function readJson(filePath) {
-  return JSON.parse(await readFile(filePath, "utf8"));
+  return JSON.parse(await readFile(filePath, "utf-8"));
 }
 
 async function writeJson(filePath, value) {

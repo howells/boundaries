@@ -3,14 +3,17 @@ import { execFile } from "node:child_process";
 import { mkdtemp, mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { promisify } from "node:util";
 import test from "node:test";
+import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
 const cliPath = new URL("../src/cli.js", import.meta.url);
 
 test("prints command help for the boundaries binary", async () => {
-  const { stdout } = await execFileAsync(process.execPath, [cliPath.pathname, "--help"]);
+  const { stdout } = await execFileAsync(process.execPath, [
+    cliPath.pathname,
+    "--help",
+  ]);
 
   assert.match(stdout, /Usage: boundaries \[command\]/);
   assert.match(stdout, /Default command: check/);
@@ -21,12 +24,14 @@ test("prints command help for the boundaries binary", async () => {
 
 test("defaults to check when no command is provided", async () => {
   const root = await createFixtureRepo();
-  await execFileAsync(process.execPath, [cliPath.pathname, "init"], { cwd: root });
+  await execFileAsync(process.execPath, [cliPath.pathname, "init"], {
+    cwd: root,
+  });
 
   const { stdout } = await execFileAsync(
     process.execPath,
     [cliPath.pathname, "--no-turbo"],
-    { cwd: root },
+    { cwd: root }
   );
 
   assert.match(stdout, /Boundary configuration is valid for 2 workspaces/);
@@ -49,49 +54,80 @@ test("runs boundaries init from the command line", async () => {
     private: true,
   });
 
-  const { stdout } = await execFileAsync(process.execPath, [cliPath.pathname, "init"], {
-    cwd: root,
-  });
+  const { stdout } = await execFileAsync(
+    process.execPath,
+    [cliPath.pathname, "init"],
+    {
+      cwd: root,
+    }
+  );
 
   assert.match(stdout, /Initialized boundaries for 1 workspace/);
 
-  const packageJson = JSON.parse(await readFile(join(root, "package.json"), "utf8"));
+  const packageJson = JSON.parse(
+    await readFile(join(root, "package.json"), "utf-8")
+  );
   assert.equal(packageJson.scripts.boundaries, "boundaries check");
 });
 
 test("prints machine-readable help schema", async () => {
-  const { stdout } = await execFileAsync(process.execPath, [cliPath.pathname, "--schema"]);
+  const { stdout } = await execFileAsync(process.execPath, [
+    cliPath.pathname,
+    "--schema",
+  ]);
   const schema = JSON.parse(stdout);
 
   assert.equal(schema.success, true);
   assert.equal(schema.data.name, "boundaries");
   assert.deepEqual(
     schema.data.commands.map((command) => command.name),
-    ["init", "check", "explain", "help"],
+    ["init", "check", "explain", "help"]
   );
-  assert.equal(schema.data.commands[0].options.some((option) => option.name === "--dry-run"), true);
-  assert.equal(schema.data.commands[1].options.some((option) => option.name === "--profile"), true);
+  assert.equal(
+    schema.data.commands[0].options.some(
+      (option) => option.name === "--dry-run"
+    ),
+    true
+  );
+  assert.equal(
+    schema.data.commands[1].options.some(
+      (option) => option.name === "--profile"
+    ),
+    true
+  );
 });
 
 test("prints JSON for init dry-run and does not write files", async () => {
   const root = await createFixtureRepo();
 
-  const beforePackage = await readFile(join(root, "package.json"), "utf8");
-  await assert.rejects(stat(join(root, "apps/web/turbo.json")), { code: "ENOENT" });
+  const beforePackage = await readFile(join(root, "package.json"), "utf-8");
+  await assert.rejects(stat(join(root, "apps/web/turbo.json")), {
+    code: "ENOENT",
+  });
 
   const { stdout } = await execFileAsync(
     process.execPath,
     [cliPath.pathname, "init", "--dry-run", "--json"],
-    { cwd: root },
+    { cwd: root }
   );
 
   const response = JSON.parse(stdout);
   assert.equal(response.success, true);
   assert.equal(response.data.dryRun, true);
   assert.equal(response.data.workspaces.length, 2);
-  assert.equal(response.data.plannedWrites.some((write) => write.path === "apps/web/turbo.json"), true);
-  assert.equal(await readFile(join(root, "package.json"), "utf8"), beforePackage);
-  await assert.rejects(stat(join(root, "apps/web/turbo.json")), { code: "ENOENT" });
+  assert.equal(
+    response.data.plannedWrites.some(
+      (write) => write.path === "apps/web/turbo.json"
+    ),
+    true
+  );
+  assert.equal(
+    await readFile(join(root, "package.json"), "utf-8"),
+    beforePackage
+  );
+  await assert.rejects(stat(join(root, "apps/web/turbo.json")), {
+    code: "ENOENT",
+  });
 });
 
 test("prints structured JSON errors", async () => {
@@ -107,7 +143,9 @@ test("prints structured JSON errors", async () => {
 
 test("prints JSON for check config failures", async () => {
   const root = await createFixtureRepo();
-  const { stderr, code } = await execCli(["check", "--no-turbo", "--json"], { cwd: root });
+  const { stderr, code } = await execCli(["check", "--no-turbo", "--json"], {
+    cwd: root,
+  });
 
   assert.equal(code, 1);
   const response = JSON.parse(stderr);
@@ -120,10 +158,19 @@ test("prints JSON for profile check violations", async () => {
   const root = await mkdtemp(join(tmpdir(), "boundaries-cli-"));
   await mkdir(join(root, "src/shared"), { recursive: true });
   await mkdir(join(root, "src/features/search"), { recursive: true });
-  await writeFile(join(root, "src/shared/date.js"), 'import "../features/search/model.js";\n');
-  await writeFile(join(root, "src/features/search/model.js"), "export const model = {};\n");
+  await writeFile(
+    join(root, "src/shared/date.js"),
+    'import "../features/search/model.js";\n'
+  );
+  await writeFile(
+    join(root, "src/features/search/model.js"),
+    "export const model = {};\n"
+  );
 
-  const { stderr, code } = await execCli(["check", "--profile", "feature-sliced", "--json"], { cwd: root });
+  const { stderr, code } = await execCli(
+    ["check", "--profile", "feature-sliced", "--json"],
+    { cwd: root }
+  );
 
   assert.equal(code, 1);
   const response = JSON.parse(stderr);
@@ -137,10 +184,19 @@ test("prints JSON for clean profile checks", async () => {
   const root = await mkdtemp(join(tmpdir(), "boundaries-cli-"));
   await mkdir(join(root, "src/features/search"), { recursive: true });
   await mkdir(join(root, "src/shared"), { recursive: true });
-  await writeFile(join(root, "src/features/search/model.js"), 'import "../../shared/date.js";\n');
-  await writeFile(join(root, "src/shared/date.js"), "export const format = () => '';\n");
+  await writeFile(
+    join(root, "src/features/search/model.js"),
+    'import "../../shared/date.js";\n'
+  );
+  await writeFile(
+    join(root, "src/shared/date.js"),
+    "export const format = () => '';\n"
+  );
 
-  const { stdout, code } = await execCli(["check", "--profile=feature-sliced", "--json"], { cwd: root });
+  const { stdout, code } = await execCli(
+    ["check", "--profile=feature-sliced", "--json"],
+    { cwd: root }
+  );
 
   assert.equal(code, 0);
   const response = JSON.parse(stdout);
@@ -169,11 +225,16 @@ test("prints structured JSON errors for unsafe workspace patterns", async () => 
 
 test("prints JSON for explain decisions", async () => {
   const root = await createFixtureRepo({ includeSecondApp: true });
-  await execFileAsync(process.execPath, [cliPath.pathname, "init"], { cwd: root });
-
-  const { stdout, code } = await execCli(["explain", "apps/web", "apps/admin", "--json"], {
+  await execFileAsync(process.execPath, [cliPath.pathname, "init"], {
     cwd: root,
   });
+
+  const { stdout, code } = await execCli(
+    ["explain", "apps/web", "apps/admin", "--json"],
+    {
+      cwd: root,
+    }
+  );
 
   assert.equal(code, 1);
   const response = JSON.parse(stdout);
@@ -215,13 +276,17 @@ async function writePackage(root, relativePath, name) {
 
 async function execCli(args, options = {}) {
   try {
-    const result = await execFileAsync(process.execPath, [cliPath.pathname, ...args], options);
+    const result = await execFileAsync(
+      process.execPath,
+      [cliPath.pathname, ...args],
+      options
+    );
     return { ...result, code: 0 };
   } catch (error) {
     return {
-      stdout: error.stdout ?? "",
-      stderr: error.stderr ?? "",
       code: error.code,
+      stderr: error.stderr ?? "",
+      stdout: error.stdout ?? "",
     };
   }
 }

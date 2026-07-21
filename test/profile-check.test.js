@@ -8,10 +8,18 @@ import { checkProfile } from "../src/profile-check.js";
 
 test("feature-sliced profile blocks lower layers importing higher layers", async () => {
   const root = await mkdtemp(join(tmpdir(), "boundaries-profile-"));
-  await writeProjectFile(root, "src/shared/date.js", 'import "../features/search/model.js";\n');
-  await writeProjectFile(root, "src/features/search/model.js", "export const model = {};\n");
+  await writeProjectFile(
+    root,
+    "src/shared/date.js",
+    'import "../features/search/model.js";\n'
+  );
+  await writeProjectFile(
+    root,
+    "src/features/search/model.js",
+    "export const model = {};\n"
+  );
 
-  const result = await checkProfile({ root, profile: "feature-sliced" });
+  const result = await checkProfile({ profile: "feature-sliced", root });
 
   assert.equal(result.ok, false);
   assert.equal(result.profile, "feature-sliced");
@@ -22,10 +30,18 @@ test("feature-sliced profile blocks lower layers importing higher layers", async
 
 test("feature-sliced profile allows higher layers importing lower layers", async () => {
   const root = await mkdtemp(join(tmpdir(), "boundaries-profile-"));
-  await writeProjectFile(root, "src/features/search/model.js", 'import "../../shared/date.js";\n');
-  await writeProjectFile(root, "src/shared/date.js", "export const format = () => '';\n");
+  await writeProjectFile(
+    root,
+    "src/features/search/model.js",
+    'import "../../shared/date.js";\n'
+  );
+  await writeProjectFile(
+    root,
+    "src/shared/date.js",
+    "export const format = () => '';\n"
+  );
 
-  const result = await checkProfile({ root, profile: "feature-sliced" });
+  const result = await checkProfile({ profile: "feature-sliced", root });
 
   assert.equal(result.ok, true);
   assert.deepEqual(result.violations, []);
@@ -33,10 +49,18 @@ test("feature-sliced profile allows higher layers importing lower layers", async
 
 test("clean-node profile keeps domain independent from adapters", async () => {
   const root = await mkdtemp(join(tmpdir(), "boundaries-profile-"));
-  await writeProjectFile(root, "src/domain/user.js", 'import "../adapters/http.js";\n');
-  await writeProjectFile(root, "src/adapters/http.js", "export const handler = () => {};\n");
+  await writeProjectFile(
+    root,
+    "src/domain/user.js",
+    'import "../adapters/http.js";\n'
+  );
+  await writeProjectFile(
+    root,
+    "src/adapters/http.js",
+    "export const handler = () => {};\n"
+  );
 
-  const result = await checkProfile({ root, profile: "clean-node" });
+  const result = await checkProfile({ profile: "clean-node", root });
 
   assert.equal(result.ok, false);
   assert.equal(result.violations.length, 1);

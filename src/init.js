@@ -1,4 +1,10 @@
-import { mkdir, readFile, readdir, realpath, writeFile } from "node:fs/promises";
+import {
+  mkdir,
+  readFile,
+  readdir,
+  realpath,
+  writeFile,
+} from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 
 import {
@@ -7,7 +13,10 @@ import {
   inferTagsForWorkspace,
 } from "./core.js";
 
-export async function initRepository({ root = process.cwd(), dryRun = false } = {}) {
+export async function initRepository({
+  root = process.cwd(),
+  dryRun = false,
+} = {}) {
   const rootPackageJsonPath = join(root, "package.json");
   const rootTurboJsonPath = join(root, "turbo.json");
   const rootPackageJson = await readJson(rootPackageJsonPath);
@@ -16,23 +25,23 @@ export async function initRepository({ root = process.cwd(), dryRun = false } = 
   const plannedWrites = [];
 
   rootPackageJson.scripts = {
-    ...(rootPackageJson.scripts ?? {}),
+    ...rootPackageJson.scripts,
     boundaries: rootPackageJson.scripts?.boundaries ?? "boundaries check",
   };
 
   await planJsonWrite({
-    root,
-    filePath: rootPackageJsonPath,
-    value: rootPackageJson,
     dryRun,
+    filePath: rootPackageJsonPath,
     plannedWrites,
+    root,
+    value: rootPackageJson,
   });
   await planJsonWrite({
-    root,
-    filePath: rootTurboJsonPath,
-    value: applyRootBoundaryConfig(rootTurboJson),
     dryRun,
+    filePath: rootTurboJsonPath,
     plannedWrites,
+    root,
+    value: applyRootBoundaryConfig(rootTurboJson),
   });
 
   for (const workspace of workspaces) {
@@ -40,19 +49,20 @@ export async function initRepository({ root = process.cwd(), dryRun = false } = 
     const currentTurboJson = await readJson(turboJsonPath, {});
     const tags = inferTagsForWorkspace(workspace);
     await planJsonWrite({
-      root,
-      filePath: turboJsonPath,
-      value: createPackageTurboConfig(currentTurboJson, tags),
       dryRun,
+      filePath: turboJsonPath,
       plannedWrites,
+      root,
+      value: createPackageTurboConfig(currentTurboJson, tags),
     });
   }
 
-  return { dryRun, workspaces, plannedWrites };
+  return { dryRun, plannedWrites, workspaces };
 }
 
-export async function discoverWorkspaces(root, rootPackageJson = undefined) {
-  const packageJson = rootPackageJson ?? (await readJson(join(root, "package.json")));
+export async function discoverWorkspaces(root, rootPackageJson) {
+  const packageJson =
+    rootPackageJson ?? (await readJson(join(root, "package.json")));
   const patterns = await workspacePatterns(root, packageJson);
   const workspaces = [];
 
@@ -61,10 +71,13 @@ export async function discoverWorkspaces(root, rootPackageJson = undefined) {
   }
 
   return workspaces
-    .sort((left, right) => left.path.localeCompare(right.path))
-    .filter((workspace, index, allWorkspaces) => {
-      return allWorkspaces.findIndex((candidate) => candidate.path === workspace.path) === index;
-    });
+    .toSorted((left, right) => left.path.localeCompare(right.path))
+    .filter(
+      (workspace, index, allWorkspaces) =>
+        allWorkspaces.findIndex(
+          (candidate) => candidate.path === workspace.path
+        ) === index
+    );
 }
 
 async function workspacePatterns(root, packageJson) {
@@ -133,7 +146,11 @@ async function discoverPattern(root, pattern) {
 }
 
 async function discoverGlobPattern(root, pattern) {
-  const parentPath = assertSafeWorkspacePath(root, pattern.slice(0, -2), pattern);
+  const parentPath = assertSafeWorkspacePath(
+    root,
+    pattern.slice(0, -2),
+    pattern
+  );
   await assertRealPathInsideRoot(root, parentPath, pattern);
   const absoluteParentPath = join(root, parentPath);
   let entries;
@@ -154,7 +171,10 @@ async function discoverGlobPattern(root, pattern) {
     }
 
     const workspacePath = `${parentPath}/${entry.name}`;
-    const packageJson = await readJson(join(root, workspacePath, "package.json"), null);
+    const packageJson = await readJson(
+      join(root, workspacePath, "package.json"),
+      null
+    );
     if (!packageJson) {
       continue;
     }
@@ -172,16 +192,21 @@ async function discoverGlobPattern(root, pattern) {
 async function discoverExactPattern(root, pattern) {
   const workspacePath = assertSafeWorkspacePath(root, pattern, pattern);
   await assertRealPathInsideRoot(root, workspacePath, pattern);
-  const packageJson = await readJson(join(root, workspacePath, "package.json"), null);
+  const packageJson = await readJson(
+    join(root, workspacePath, "package.json"),
+    null
+  );
   if (!packageJson) {
     return [];
   }
 
-  return [{
-    name: packageJson.name,
-    packageJson,
-    path: workspacePath,
-  }];
+  return [
+    {
+      name: packageJson.name,
+      packageJson,
+      path: workspacePath,
+    },
+  ];
 }
 
 function assertSafeWorkspacePath(root, workspacePath, pattern) {
@@ -190,7 +215,9 @@ function assertSafeWorkspacePath(root, workspacePath, pattern) {
   const relativeWorkspace = relative(resolvedRoot, resolvedWorkspace);
 
   if (relativeWorkspace.startsWith("..") || isAbsolute(relativeWorkspace)) {
-    const error = new Error(`Workspace pattern escapes repository root: ${pattern}`);
+    const error = new Error(
+      `Workspace pattern escapes repository root: ${pattern}`
+    );
     error.code = "UNSAFE_WORKSPACE_PATTERN";
     error.is_retriable = false;
     error.suggestions = ["Use workspace paths inside the repository root."];
@@ -216,7 +243,9 @@ async function assertRealPathInsideRoot(root, workspacePath, pattern) {
   const relativeWorkspace = relative(resolvedRoot, resolvedWorkspace);
 
   if (relativeWorkspace.startsWith("..") || isAbsolute(relativeWorkspace)) {
-    const error = new Error(`Workspace pattern escapes repository root: ${pattern}`);
+    const error = new Error(
+      `Workspace pattern escapes repository root: ${pattern}`
+    );
     error.code = "UNSAFE_WORKSPACE_PATTERN";
     error.is_retriable = false;
     error.suggestions = ["Use workspace paths inside the repository root."];
@@ -225,12 +254,15 @@ async function assertRealPathInsideRoot(root, workspacePath, pattern) {
 }
 
 function normalizeWorkspacePattern(pattern) {
-  return pattern.replaceAll("\\", "/").replace(/^\.?\//, "").replace(/\/$/, "");
+  return pattern
+    .replaceAll("\\", "/")
+    .replace(/^\.?\//, "")
+    .replace(/\/$/, "");
 }
 
-async function readJson(filePath, fallback = undefined) {
+async function readJson(filePath, fallback) {
   try {
-    return JSON.parse(await readFile(filePath, "utf8"));
+    return JSON.parse(await readFile(filePath, "utf-8"));
   } catch (error) {
     if (error.code === "ENOENT" && fallback !== undefined) {
       return fallback;
@@ -239,9 +271,9 @@ async function readJson(filePath, fallback = undefined) {
   }
 }
 
-async function readText(filePath, fallback = undefined) {
+async function readText(filePath, fallback) {
   try {
-    return await readFile(filePath, "utf8");
+    return await readFile(filePath, "utf-8");
   } catch (error) {
     if (error.code === "ENOENT" && fallback !== undefined) {
       return fallback;
@@ -259,9 +291,9 @@ async function planJsonWrite({ root, filePath, value, dryRun, plannedWrites }) {
   await assertRealPathInsideRoot(root, dirname(filePath), filePath);
 
   plannedWrites.push({
-    path: relativePath(root, filePath),
-    kind: "json",
     content: `${JSON.stringify(value, null, 2)}\n`,
+    kind: "json",
+    path: relativePath(root, filePath),
   });
 
   if (!dryRun) {
@@ -270,5 +302,7 @@ async function planJsonWrite({ root, filePath, value, dryRun, plannedWrites }) {
 }
 
 function relativePath(root, filePath) {
-  return filePath.startsWith(`${root}/`) ? filePath.slice(root.length + 1) : filePath;
+  return filePath.startsWith(`${root}/`)
+    ? filePath.slice(root.length + 1)
+    : filePath;
 }

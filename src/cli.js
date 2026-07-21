@@ -32,7 +32,8 @@ async function main(argv) {
   const [command, ...args] = argv;
   const json = hasFlag(argv, "--json");
   const schema = hasFlag(argv, "--schema");
-  const effectiveCommand = !command || command.startsWith("-") ? "check" : command;
+  const effectiveCommand =
+    !command || command.startsWith("-") ? "check" : command;
   const effectiveArgs = !command || command.startsWith("-") ? argv : args;
 
   if (schema) {
@@ -50,12 +51,14 @@ async function main(argv) {
   }
 
   if (effectiveCommand === "init") {
-    const result = await initRepository({ dryRun: hasFlag(effectiveArgs, "--dry-run") });
+    const result = await initRepository({
+      dryRun: hasFlag(effectiveArgs, "--dry-run"),
+    });
     if (json) {
       writeJson(process.stdout, success(summarizeInitResult(result)));
     } else {
       process.stdout.write(
-        `${result.dryRun ? "Planned" : "Initialized"} boundaries for ${result.workspaces.length} workspace${result.workspaces.length === 1 ? "" : "s"}.\n`,
+        `${result.dryRun ? "Planned" : "Initialized"} boundaries for ${result.workspaces.length} workspace${result.workspaces.length === 1 ? "" : "s"}.\n`
       );
     }
     return EXIT_CODES.OK;
@@ -69,46 +72,61 @@ async function main(argv) {
         if (result.ok) {
           writeJson(process.stdout, success(result));
         } else {
-          writeJson(process.stderr, failure(profileViolationProblem(result), result));
+          writeJson(
+            process.stderr,
+            failure(profileViolationProblem(result), result)
+          );
         }
       } else if (result.ok) {
-        process.stdout.write(`Profile ${result.profile} is valid across ${result.filesChecked} file${result.filesChecked === 1 ? "" : "s"}.\n`);
+        process.stdout.write(
+          `Profile ${result.profile} is valid across ${result.filesChecked} file${result.filesChecked === 1 ? "" : "s"}.\n`
+        );
       } else {
-        process.stderr.write(`Profile ${result.profile} found ${result.violations.length} violation${result.violations.length === 1 ? "" : "s"}:\n`);
+        process.stderr.write(
+          `Profile ${result.profile} found ${result.violations.length} violation${result.violations.length === 1 ? "" : "s"}:\n`
+        );
         for (const violation of result.violations) {
-          process.stderr.write(`- ${violation.from} -> ${violation.specifier}: ${violation.rule}\n`);
+          process.stderr.write(
+            `- ${violation.from} -> ${violation.specifier}: ${violation.rule}\n`
+          );
         }
       }
       return result.ok ? EXIT_CODES.OK : 1;
     }
 
     const result = await checkRepository({
-      runTurbo: !effectiveArgs.includes("--no-turbo"),
       quiet: json,
+      runTurbo: !effectiveArgs.includes("--no-turbo"),
     });
     if (json) {
       if (result.ok) {
-        writeJson(process.stdout, success({
-          ok: true,
-          workspaceCount: result.workspaces?.length ?? 0,
-          ranTurbo: !effectiveArgs.includes("--no-turbo"),
-          turbo: result.turbo
-            ? summarizeTurboResult(result.turbo)
-            : undefined,
-        }));
+        writeJson(
+          process.stdout,
+          success({
+            ok: true,
+            ranTurbo: !effectiveArgs.includes("--no-turbo"),
+            turbo: result.turbo
+              ? summarizeTurboResult(result.turbo)
+              : undefined,
+            workspaceCount: result.workspaces?.length ?? 0,
+          })
+        );
       } else {
         const primary = result.errors[0] ?? {
           code: "BOUNDARY_CHECK_FAILED",
-          message: "Boundary check failed.",
           is_retriable: false,
+          message: "Boundary check failed.",
           suggestions: ["Inspect command output and retry."],
         };
-        writeJson(process.stderr, failure(primary, {
-          errors: result.errors,
-          turbo: result.turbo
-            ? summarizeTurboResult(result.turbo)
-            : undefined,
-        }));
+        writeJson(
+          process.stderr,
+          failure(primary, {
+            errors: result.errors,
+            turbo: result.turbo
+              ? summarizeTurboResult(result.turbo)
+              : undefined,
+          })
+        );
       }
     }
     return result.exitCode;
@@ -120,8 +138,8 @@ async function main(argv) {
 
   const error = {
     code: "UNKNOWN_COMMAND",
-    message: `Unknown command: ${command}`,
     is_retriable: false,
+    message: `Unknown command: ${command}`,
     suggestions: ["Run `boundaries --help` for available commands."],
   };
   if (json) {
@@ -137,8 +155,8 @@ async function explain(args, { json = false } = {}) {
   if (!fromSelector || !toSelector) {
     const error = {
       code: "USAGE_ERROR",
-      message: "Usage: boundaries explain <from> <to>",
       is_retriable: false,
+      message: "Usage: boundaries explain <from> <to>",
       suggestions: ["Provide both source and target workspace selectors."],
     };
     if (json) {
@@ -159,9 +177,12 @@ async function explain(args, { json = false } = {}) {
   if (!from || !to) {
     const error = {
       code: "WORKSPACE_NOT_FOUND",
-      message: "Could not find both workspaces. Use a package name or workspace path.",
       is_retriable: false,
-      suggestions: ["Run `boundaries init --dry-run --json` to inspect discovered workspaces."],
+      message:
+        "Could not find both workspaces. Use a package name or workspace path.",
+      suggestions: [
+        "Run `boundaries init --dry-run --json` to inspect discovered workspaces.",
+      ],
     };
     if (json) {
       writeJson(process.stderr, failure(error));
@@ -172,17 +193,17 @@ async function explain(args, { json = false } = {}) {
   }
 
   const decision = evaluateDependency({
-    rootConfig: rootTurboJson,
     fromName: from.name,
     fromTags: await readTags(root, from),
+    rootConfig: rootTurboJson,
     toName: to.name,
     toTags: await readTags(root, to),
   });
 
   const data = {
     allowed: decision.allowed,
-    reason: decision.reason,
     from: describeWorkspace(from, await readTags(root, from)),
+    reason: decision.reason,
     to: describeWorkspace(to, await readTags(root, to)),
   };
 
@@ -190,16 +211,24 @@ async function explain(args, { json = false } = {}) {
     if (decision.allowed) {
       writeJson(process.stdout, success(data));
     } else {
-      writeJson(process.stdout, failure({
-        code: "BOUNDARY_BLOCKED",
-        message: decision.reason,
-        is_retriable: false,
-        suggestions: ["Move shared code into a package or adjust package boundary tags intentionally."],
-      }, data));
+      writeJson(
+        process.stdout,
+        failure(
+          {
+            code: "BOUNDARY_BLOCKED",
+            is_retriable: false,
+            message: decision.reason,
+            suggestions: [
+              "Move shared code into a package or adjust package boundary tags intentionally.",
+            ],
+          },
+          data
+        )
+      );
     }
   } else {
     process.stdout.write(
-      `${from.name ?? from.path} -> ${to.name ?? to.path}: ${decision.allowed ? "allowed" : "blocked"}\n${decision.reason}\n`,
+      `${from.name ?? from.path} -> ${to.name ?? to.path}: ${decision.allowed ? "allowed" : "blocked"}\n${decision.reason}\n`
     );
   }
 
@@ -209,13 +238,13 @@ async function explain(args, { json = false } = {}) {
 function summarizeInitResult(result) {
   return {
     dryRun: result.dryRun,
-    workspaces: result.workspaces.map((workspace) => ({
-      name: workspace.name,
-      path: workspace.path,
-    })),
     plannedWrites: result.plannedWrites.map((write) => ({
       path: write.path,
       kind: write.kind,
+    })),
+    workspaces: result.workspaces.map((workspace) => ({
+      name: workspace.name,
+      path: workspace.path,
     })),
   };
 }
@@ -223,8 +252,9 @@ function summarizeInitResult(result) {
 function summarizeTurboResult(result) {
   return {
     exitCode: result.exitCode,
-    stdout: result.stdout,
+    ...(result.signal ? { signal: result.signal } : {}),
     stderr: result.stderr,
+    stdout: result.stdout,
     ...(result.stdoutTruncated ? { stdoutTruncated: true } : {}),
     ...(result.stderrTruncated ? { stderrTruncated: true } : {}),
   };
@@ -233,9 +263,11 @@ function summarizeTurboResult(result) {
 function profileViolationProblem(result) {
   return {
     code: "PROFILE_BOUNDARY_VIOLATIONS",
-    message: `${result.violations.length} profile boundary violation${result.violations.length === 1 ? "" : "s"} found.`,
     is_retriable: false,
-    suggestions: ["Move the import to a lower layer or adjust the selected architecture profile."],
+    message: `${result.violations.length} profile boundary violation${result.violations.length === 1 ? "" : "s"} found.`,
+    suggestions: [
+      "Move the import to a lower layer or adjust the selected architecture profile.",
+    ],
   };
 }
 
@@ -257,23 +289,28 @@ function optionValue(args, name) {
       return arg.slice(name.length + 1);
     }
   }
-  return undefined;
 }
 
 function findWorkspace(workspaces, selector) {
-  return workspaces.find((workspace) => {
-    return workspace.name === selector || workspace.path === selector || workspace.path.endsWith(`/${selector}`);
-  });
+  return workspaces.find(
+    (workspace) =>
+      workspace.name === selector ||
+      workspace.path === selector ||
+      workspace.path.endsWith(`/${selector}`)
+  );
 }
 
 async function readTags(root, workspace) {
-  const turboJson = await readJson(join(root, workspace.path, "turbo.json"), {});
+  const turboJson = await readJson(
+    join(root, workspace.path, "turbo.json"),
+    {}
+  );
   return turboJson.tags ?? [];
 }
 
-async function readJson(filePath, fallback = undefined) {
+async function readJson(filePath, fallback) {
   try {
-    return JSON.parse(await readFile(filePath, "utf8"));
+    return JSON.parse(await readFile(filePath, "utf-8"));
   } catch (error) {
     if (error.code === "ENOENT" && fallback !== undefined) {
       return fallback;
@@ -289,15 +326,21 @@ main(process.argv.slice(2))
   .catch((error) => {
     const json = process.argv.includes("--json");
     const problem = {
-      code: error.code === "ENOENT" ? "FILE_NOT_FOUND" : error.code ?? "UNHANDLED_ERROR",
-      message: error.message,
+      code:
+        error.code === "ENOENT"
+          ? "FILE_NOT_FOUND"
+          : (error.code ?? "UNHANDLED_ERROR"),
       is_retriable: error.is_retriable ?? false,
-      suggestions: error.suggestions ?? ["Check that you are running from a workspace root with package.json."],
+      message: error.message,
+      suggestions: error.suggestions ?? [
+        "Check that you are running from a workspace root with package.json.",
+      ],
     };
     if (json) {
       writeJson(process.stderr, failure(problem));
     } else {
       process.stderr.write(`boundaries: ${error.message}\n`);
     }
-    process.exitCode = error.code === "ENOENT" ? EXIT_CODES.DATA : EXIT_CODES.SOFTWARE;
+    process.exitCode =
+      error.code === "ENOENT" ? EXIT_CODES.DATA : EXIT_CODES.SOFTWARE;
   });

@@ -16,6 +16,8 @@ Use `@howells/boundaries` for architecture boundary enforcement in JavaScript an
 5. Run `boundaries check`.
 6. If a violation appears, prefer fixing the import or dependency declaration. Use exceptions only when they are narrow, temporary, and documented.
 
+`boundaries check` delegates to `turbo boundaries` from a filtered temporary mirror when gitignored paths are present. Safe repository-internal symlinks are materialized, and ignored paths never enter the mirror. It does not rename, move, or link back into files in the original working tree. Do not add repo-local cleanup scripts for generated artifacts unless a specific tool writes source-like files that are not gitignored.
+
 For non-Turbo source-layout checks, run a JavaScript profile directly:
 
 ```sh
