@@ -40,7 +40,7 @@
     "format": "howells-oxfmt --write package.json src test scripts skills AGENTS.md CHANGELOG.md README.md oxlint.config.ts oxfmt.config.ts"
   },
   "devDependencies": {
-    "@howells/lint": "^0.2.1"
+    "@howells/lint": "^3.9.0"
   },
   "engines": {
     "node": ">=20"
